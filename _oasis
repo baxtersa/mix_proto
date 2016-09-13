@@ -1,14 +1,21 @@
-OASISFormat: 0.4
-Name:        mix_proto
-Version:     1.0.0
-Synopsis:    A prototype implementation of the MIX hybrid
+OASISFormat:    0.4
+OCamlVersion:   >= 4.02.3
+Name:           mix_proto
+Version:        1.0.0
+Synopsis:       A prototype implementation of the MIX hybrid
   type-checking/symbolic execution engine
-Authors:     Sam Baxter <sbaxter@cs.umass.edu>
-License:     MIT
-Plugins:     META (0.4), DevFiles (0.4)
+Authors:        Sam Baxter <sbaxter@cs.umass.edu>
+License:        MIT
+Plugins:        META (0.4), DevFiles (0.4)
+Buildtools:     ocamlbuild, camlp4
+AlphaFeatures:  ocamlbuild_more_args
+XOCamlbuildExtraArgs:   -cflags -w,-40,-short-paths
 
 Executable mix
   Path:       lib
   BuildTools: ocamlbuild
   MainIs:     mix.ml
-  
+  BuildDepends:
+    mparser,
+    mparser.re,
+    ppx_deriving.std  
