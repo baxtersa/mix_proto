@@ -8,6 +8,7 @@ type binop =
 
 type unop =
   | Neg
+  | Ref
   | Deref
 
 type const =
@@ -21,9 +22,6 @@ type exp =
   | Unop of unop * exp
   | If of exp * exp * exp
   | Let of id * exp * exp
-  | TypeBlock of exp
-  | SymbolicBloc of exp
-  | Ref of exp
 
 type typ =
   | IntTyp
