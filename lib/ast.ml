@@ -1,15 +1,18 @@
 type id = string [@@deriving show]
 
+type typ =
+  | IntTyp
+  | BoolTyp
+  | RefTyp of typ
+  | FunTyp of typ * typ [@@deriving show]
+
 type binop =
   | Add
   | Eq
-  | Conj
-  | Assign
+  | Conj [@@deriving show]
 
 type unop =
-  | Neg
-  | Ref
-  | Deref
+  | Neg [@@deriving show]
 
 type const =
   | Int of int
@@ -22,8 +25,8 @@ type exp =
   | Unop of unop * exp
   | If of exp * exp * exp
   | Let of id * exp * exp
-
-type typ =
-  | IntTyp
-  | BoolTyp
-  | RefTyp of typ [@@deriving show]
+  | Ref of exp
+  | Assign of id * exp
+  | Deref of id
+  | Fun of id * typ * exp
+  | App of exp * exp [@@deriving show]
