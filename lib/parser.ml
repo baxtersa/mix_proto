@@ -6,7 +6,15 @@ open Tokens
 
 type 'a parser = ('a, unit) MParser.t
 
-let id : string parser = regexp (make_regexp "[A-Za-z_][A-Za-z_0-9_']*") <<< spaces
+let keywords = [
+  "true"; "false"; "empty"; "head"; "tail"; "empty?";
+  "if"; "then"; "else"; "let"; "in"; "fun"; "fix"
+]
+
+let id : string parser =
+  attempt (((choice (List.map symbol keywords)) >>=
+            fun x -> fail ("unexpected " ^ x ^ " (reserved keyword)")) <|>
+           regexp (make_regexp "([A-Za-z_][A-Za-z_0-9_']*)") <<< spaces) (* >> *)
 
 let rev_fold_left f xs = match List.rev xs with
   | [] -> raise (Failure "expected at least one element (internal error)")
@@ -53,28 +61,28 @@ let rec atoms s = (
 
 and refs s = (
   (symbol "ref" >> exp |>> fun e -> Ref e) <|>
-  (id >>= fun x ->
-   (symbol ":=" >> exp |>> fun e -> Assign (x, e)) <|>
-   (return (Id x))) <|>
+  (id) (symbol ":=" >> exp)
+    (fun x e -> Assign (x, e))) <|>
   (symbol "!" >> id |>> fun x -> Deref x) <|>
   atoms
 ) s
 
 and app s = (
-  many1 refs |>> rev_fold_left (fun x y -> App (y, x))
-) s
+    (many1 refs |>> rev_fold_left (fun x y -> App (y, x))) <|>
+    (refs)
+  ) s
 
-and cmp s = expression operators refs s
+and cmp s = expression operators app s
 
 and exp s = (
-  (pipe3 (symbol "if" >> exp) (symbol "then" >> exp) (symbol "else" >> exp)
-     (fun e1 e2 e3 -> If (e1, e2, e3))) <|>
-  (pipe3 (symbol "let" >> id) (symbol "=" >> exp) (symbol "in" >> exp)
-     (fun x e1 e2 -> Let (x, e1, e2))) <|>
-  (pipe3 (symbol "fun" >> symbol "(" >> id) (symbol ":" >> typ) (symbol ")" >> symbol "->" >> exp)
-     (fun x t e -> Fun (x, t, e))) <|>
-  cmp
-) s
+    (pipe3 (symbol "if" >> exp) (symbol "then" >> exp) (symbol "else" >> exp)
+       (fun e1 e2 e3 -> If (e1, e2, e3))) <|>
+    (pipe3 (symbol "let" >> id) (symbol "=" >> exp) (symbol "in" >> exp)
+       (fun x e1 e2 -> Let (x, e1, e2))) <|>
+    (pipe3 (symbol "fun" >> symbol "(" >> id) (symbol ":" >> typ) (symbol ")" >> symbol "->" >> exp)
+       (fun x t e -> Fun (x, t, e))) <|>
+    cmp
+  ) s
 
 let from_string (str : string) = match parse_string exp str () with
   | Success exp -> exp
