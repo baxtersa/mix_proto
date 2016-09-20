@@ -6,9 +6,17 @@ open Tokens
 
 type 'a parser = ('a, unit) MParser.t
 
+let app_pattern p mk_app =
+  let rec f e1 s = (
+    (p >>= fun e1' -> f (mk_app e1 e1')) <|>
+    (return e1)
+  ) s in
+  p >>= f
+
 let keywords = [
   "true"; "false"; "empty"; "head"; "tail"; "empty?";
-  "if"; "then"; "else"; "let"; "in"; "fun"; "fix"
+  "if"; "then"; "else"; "let"; "in"; "fun"; "fix"; "ref";
+  "MIX(typed)"; "MIX(symbolic)"
 ]
 
 let id : string parser =
@@ -53,6 +61,14 @@ and typ s = (
 
 let rec atoms s = (
   parens exp <|>
+  (between
+     (symbol "MIX(typed)" >> spaces >> symbol "{")
+     (symbol "}") exp |>>
+   fun e -> TypedBlock e) <|>
+  (between
+     (symbol "MIX(symbolic)" >> spaces >> symbol "{")
+     (symbol "}") exp |>>
+   fun e -> SymbolicBlock e) <|>
   (symbol "true" |>> fun _ -> Const (Bool true)) <|>
   (symbol "false" |>> fun _ -> Const (Bool false)) <|>
   (decimal |>> (fun n -> Const (Int n))) <|>
@@ -61,16 +77,16 @@ let rec atoms s = (
 
 and refs s = (
   (symbol "ref" >> exp |>> fun e -> Ref e) <|>
-  (id) (symbol ":=" >> exp)
-    (fun x e -> Assign (x, e))) <|>
+  (pipe2 (followed_by (symbol ":=") "" >> id) (symbol ":=" >> exp)
+     (fun x e -> Assign (x, e))) <|>
   (symbol "!" >> id |>> fun x -> Deref x) <|>
   atoms
 ) s
 
 and app s = (
-    (many1 refs |>> rev_fold_left (fun x y -> App (y, x))) <|>
-    (refs)
-  ) s
+  (app_pattern refs (fun x y -> App (x, y))) <|>
+  (refs)
+) s
 
 and cmp s = expression operators app s
 

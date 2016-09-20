@@ -29,4 +29,6 @@ type exp =
   | Assign of id * exp
   | Deref of id
   | Fun of id * typ * exp
-  | App of exp * exp [@@deriving show]
+  | App of exp * exp
+  | TypedBlock of exp
+  | SymbolicBlock of exp [@@deriving show]
