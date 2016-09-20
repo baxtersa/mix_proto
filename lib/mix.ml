@@ -1,5 +1,6 @@
 open Ast
 open Parser
+open Symbolic_interp
 
 let _ =
   let filename : string = Sys.argv.(1) in
