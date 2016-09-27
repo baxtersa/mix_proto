@@ -20,9 +20,10 @@ let keywords = [
 ]
 
 let id : string parser =
-  attempt (((choice (List.map symbol keywords)) >>=
-            fun x -> fail ("unexpected " ^ x ^ " (reserved keyword)")) <|>
-           regexp (make_regexp "([A-Za-z_][A-Za-z_0-9_']*)") <<< spaces) (* >> *)
+  attempt (
+    regexp (make_regexp "[A-Za-z_][A-Za-z_0-9_']*") >>= fun str ->
+    if List.mem str keywords then fail "reserved word" else return str)
+  <<< spaces                    (* >> *)
 
 let rev_fold_left f xs = match List.rev xs with
   | [] -> raise (Failure "expected at least one element (internal error)")
