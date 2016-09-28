@@ -20,11 +20,20 @@ let with_guard ((_, m):state) (e:sym_exp) : state =
 let guard_of ((g, _):state) : sym_exp =
   g
 
+let with_memory ((e, _):state) (m:sym_memory) : state =
+  e, m
+let memory_of ((_, m):state) : sym_memory =
+  m
+
+let count = ref 0
+let fresh_sym () : sym_id =
+  incr count;
+  "_a" ^ (string_of_int !count)
+
 let rec sym_eval (ctx:sigma) (s:state) (e:exp) : state * sym_exp =
   match e with
   | Id x ->
-    s, (try lookup_exp x ctx
-        with Not_found -> failwith ("Unknown identifier:\t" ^ x))
+    s, lookup_exp x ctx
   | Const c ->
     s, Typed (SymConst c, typeof e)
   | Binop (op, e1, e2) ->
@@ -41,6 +50,21 @@ let rec sym_eval (ctx:sigma) (s:state) (e:exp) : state * sym_exp =
     let s1'' = with_guard s1 (SymBinop (Conj, guard_of s1, SymUnop (Neg, g))) in
     let s3, sym_e3 = sym_eval ctx s1'' e3 in
     s, SymId "Crazyness"
+  | Ref e ->
+     let s1, sym_e = sym_eval ctx s e in
+     (match sym_e with
+      | Typed (sym_e', t) ->
+         let alpha = fresh_sym () in
+         let sym_alpha = Typed (SymId alpha, TRef t) in
+         let s' = with_memory s1 (Alloc (memory_of s1, sym_alpha, sym_e)) in
+         s', sym_alpha
+      | _ ->
+         failwith "Unexpected symbolic expression evaluating reference.")
+  | Assign (e1, e2) ->
+     let s1, sym_e1 = sym_eval ctx s e1 in
+     let s2, sym_e2 = sym_eval ctx s1 e2 in
+     let s' = with_memory s2 (Update (memory_of s2, sym_e1, sym_e2)) in
+     s', sym_e2
 
 and sym_eval_binop (ctx:sigma) (s:state)
     (op:binop) (e1:exp) (e2:exp) : state * sym_exp =
