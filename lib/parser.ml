@@ -44,19 +44,19 @@ let operators : (exp, unit) operator list list = [
 
 let rec typ_atom s = (
   parens typ <|>
-  (symbol "int" |>> fun _ -> IntTyp) <|>
-  (symbol "bool" |>> fun _ -> BoolTyp)
+  (symbol "int" |>> fun _ -> TInt) <|>
+  (symbol "bool" |>> fun _ -> TBool)
 ) s
 
 and typ_ref s = (
   typ_atom >>= fun t -> (
-    (skip_symbol "ref" |>> fun _ -> RefTyp t) <|>
+    (skip_symbol "ref" |>> fun _ -> TRef t) <|>
     (return t))
 ) s
 
 and typ s = (
   typ_ref >>= fun t1 -> (
-    (symbol "->" >> typ |>> fun t2 -> FunTyp (t1, t2)) <|>
+    (symbol "->" >> typ |>> fun t2 -> TFun (t1, t2)) <|>
     (return t1))
 ) s
 
@@ -78,9 +78,9 @@ let rec atoms s = (
 
 and refs s = (
   (symbol "ref" >> exp |>> fun e -> Ref e) <|>
-  (pipe2 (followed_by (symbol ":=") "" >> id) (symbol ":=" >> exp)
+  (pipe2 (followed_by (symbol ":=") "" >> exp) (symbol ":=" >> exp)
      (fun x e -> Assign (x, e))) <|>
-  (symbol "!" >> id |>> fun x -> Deref x) <|>
+  (symbol "!" >> exp |>> fun x -> Deref x) <|>
   atoms
 ) s
 

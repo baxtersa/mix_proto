@@ -1,10 +1,10 @@
 type id = string [@@deriving show]
 
 type typ =
-  | IntTyp
-  | BoolTyp
-  | RefTyp of typ
-  | FunTyp of typ * typ [@@deriving show]
+  | TInt
+  | TBool
+  | TRef of typ
+  | TFun of typ * typ [@@deriving show]
 
 type binop =
   | Add
@@ -26,8 +26,8 @@ type exp =
   | If of exp * exp * exp
   | Let of id * exp * exp
   | Ref of exp
-  | Assign of id * exp
-  | Deref of id
+  | Assign of exp * exp
+  | Deref of exp
   | Fun of id * typ * exp
   | App of exp * exp
   | TypedBlock of exp

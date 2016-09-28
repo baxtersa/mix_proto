@@ -9,9 +9,9 @@ type state = sym_exp * sym_memory
 let typeof (e:exp) : typ =
   match e with
   | Const (Int _) ->
-    IntTyp
+     TInt
   | Const (Bool _) ->
-    BoolTyp
+     TBool
   | _ ->
     failwith "Expected a value."
 
@@ -51,24 +51,24 @@ and sym_eval_binop (ctx:sigma ref) (s:state)
     let s1, u1 = sym_eval ctx s e1 in
     let s2, u2 = sym_eval ctx s1 e2 in
     (match u1, u2 with
-     | Typed (_, IntTyp), Typed (_, IntTyp) ->
-       s2, Typed (SymBinop (op, u1, u2), IntTyp)
+     | Typed (_, TInt), Typed (_, TInt) ->
+       s2, Typed (SymBinop (op, u1, u2), TInt)
      | _ ->
        failwith ("Addition expected operands of type int."))
   | Eq ->
     let s1, u1 = sym_eval ctx s e1 in
     let s2, u2 = sym_eval ctx s1 e2 in
     (match u1, u2 with
-     | Typed (_, IntTyp), Typed (_, IntTyp) ->
-       s2, Typed (SymBinop (op, u1, u2), IntTyp)
+     | Typed (_, TInt), Typed (_, TInt) ->
+       s2, Typed (SymBinop (op, u1, u2), TInt)
      | _ ->
        failwith ("Equality expected operands of type int."))
   | Conj ->
     let s1, u1 = sym_eval ctx s e1 in
     let s2, u2 = sym_eval ctx s1 e2 in
     (match u1, u2 with
-     | Typed (_, BoolTyp), Typed (_, BoolTyp) ->
-       s2, Typed (SymBinop (op, u1, u2), BoolTyp)
+     | Typed (_, TBool), Typed (_, TBool) ->
+       s2, Typed (SymBinop (op, u1, u2), TBool)
      | _ ->
        failwith ("Conjunction expected operands of type bool."))
 
@@ -77,7 +77,7 @@ and sym_eval_unop (ctx:sigma ref) (s:state) (op:unop) (e:exp) : state * sym_exp 
   | Neg ->
     let s', u = sym_eval ctx s e in
     (match u with
-     | Typed (_, BoolTyp) ->
-       s, Typed (SymUnop (op, u), BoolTyp)
+     | Typed (_, TBool) ->
+       s, Typed (SymUnop (op, u), TBool)
      | _ ->
        failwith ("Negation expected operand of type bool."))
