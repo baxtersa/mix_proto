@@ -37,11 +37,10 @@ let rec sym_eval (ctx:sigma) (s:state) (e:exp) : state * sym_exp =
   | If (e1, e2, e3) ->
     let s1, g = sym_eval ctx s e1 in
     let s1' = with_guard s1 (SymBinop (Conj, guard_of s1, g)) in
-    sym_eval ctx s1' e2
-  (* | If (e1, e2, e3) -> *)
-  (*   let s1, g = sym_eval ctx s e1 in *)
-  (*   let s1' = with_guard s1 (SymBinop (Conj, guard_of s1, SymUnop (Neg g))) in *)
-  (*   sym_eval ctx s1' e2 *)
+    let s2, sym_e2 = sym_eval ctx s1' e2 in
+    let s1'' = with_guard s1 (SymBinop (Conj, guard_of s1, SymUnop (Neg, g))) in
+    let s3, sym_e3 = sym_eval ctx s1'' e3 in
+    s, SymId "Crazyness"
 
 and sym_eval_binop (ctx:sigma) (s:state)
     (op:binop) (e1:exp) (e2:exp) : state * sym_exp =
