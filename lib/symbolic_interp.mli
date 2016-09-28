@@ -3,4 +3,4 @@ open Symbolic_environment
 
 type state
 
-val sym_eval : sigma ref -> state -> Ast.exp -> state * sym_exp
+val sym_eval : sigma -> state -> Ast.exp -> state * sym_exp

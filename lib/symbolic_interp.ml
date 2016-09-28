@@ -20,10 +20,10 @@ let with_guard ((_, m):state) (e:sym_exp) : state =
 let guard_of ((g, _):state) : sym_exp =
   g
 
-let rec sym_eval (ctx:sigma ref) (s:state) (e:exp) : state * sym_exp =
+let rec sym_eval (ctx:sigma) (s:state) (e:exp) : state * sym_exp =
   match e with
   | Id x ->
-    s, (try lookup_exp x !ctx
+    s, (try lookup_exp x ctx
         with Not_found -> failwith ("Unknown identifier:\t" ^ x))
   | Const c ->
     s, Typed (SymConst c, typeof e)
@@ -33,8 +33,7 @@ let rec sym_eval (ctx:sigma ref) (s:state) (e:exp) : state * sym_exp =
     sym_eval_unop ctx s op e
   | Let (x, e1, e2) ->
     let s1, sym_e1 = sym_eval ctx s e1 in
-    extend x sym_e1 ctx;
-    sym_eval ctx s1 e2
+    sym_eval ((x, sym_e1) :: ctx) s1 e2
   | If (e1, e2, e3) ->
     let s1, g = sym_eval ctx s e1 in
     let s1' = with_guard s1 (SymBinop (Conj, guard_of s1, g)) in
@@ -44,7 +43,7 @@ let rec sym_eval (ctx:sigma ref) (s:state) (e:exp) : state * sym_exp =
   (*   let s1' = with_guard s1 (SymBinop (Conj, guard_of s1, SymUnop (Neg g))) in *)
   (*   sym_eval ctx s1' e2 *)
 
-and sym_eval_binop (ctx:sigma ref) (s:state)
+and sym_eval_binop (ctx:sigma) (s:state)
     (op:binop) (e1:exp) (e2:exp) : state * sym_exp =
   match op with
   | Add ->
@@ -72,7 +71,7 @@ and sym_eval_binop (ctx:sigma ref) (s:state)
      | _ ->
        failwith ("Conjunction expected operands of type bool."))
 
-and sym_eval_unop (ctx:sigma ref) (s:state) (op:unop) (e:exp) : state * sym_exp =
+and sym_eval_unop (ctx:sigma) (s:state) (op:unop) (e:exp) : state * sym_exp =
   match op with
   | Neg ->
     let s', u = sym_eval ctx s e in
