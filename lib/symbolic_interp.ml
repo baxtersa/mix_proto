@@ -6,6 +6,8 @@ open Symbolic_environment
    constrained to be a path condition and m a symbolic memory. *)
 type state = sym_exp * sym_memory
 
+let initial_state : state = (SymConst (Bool true), Arbitrary)
+
 let typeof (e:exp) : typ =
   match e with
   | Const (Int _) ->
