@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 8e5e623f8f1da68bb9bb8843a378df8d)
+# DO NOT EDIT (digest: 4122e780fb3440eaec48163541bb143c)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -15,9 +15,11 @@ true: annot, bin_annot
 "_darcs": -traverse
 "_darcs": not_hygienic
 # Executable mix
+"lib/mix.byte": package(core)
 "lib/mix.byte": package(mparser)
 "lib/mix.byte": package(mparser.re)
 "lib/mix.byte": package(ppx_deriving.std)
+<lib/*.ml{,i,y}>: package(core)
 <lib/*.ml{,i,y}>: package(mparser)
 <lib/*.ml{,i,y}>: package(mparser.re)
 <lib/*.ml{,i,y}>: package(ppx_deriving.std)

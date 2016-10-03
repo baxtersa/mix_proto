@@ -9,13 +9,14 @@ License:        MIT
 Plugins:        META (0.4), DevFiles (0.4)
 Buildtools:     ocamlbuild, camlp4
 AlphaFeatures:  ocamlbuild_more_args
-XOCamlbuildExtraArgs:   -cflags -w,-40,-short-paths
+XOCamlbuildExtraArgs:   -tag thread -cflags -w,-40,-short-paths
 
 Executable mix
   Path:       lib
   BuildTools: ocamlbuild
   MainIs:     mix.ml
   BuildDepends:
+    core,
     mparser,
     mparser.re,
-    ppx_deriving.std  
+    ppx_deriving.std
