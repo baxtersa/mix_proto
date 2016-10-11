@@ -12,3 +12,5 @@ and sym_memory =
   | Arbitrary
   | Update of sym_memory * sym_exp * sym_exp
   | Alloc of sym_memory * sym_exp * sym_exp [@@deriving show]
+
+val fresh_sym : unit -> sym_id

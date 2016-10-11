@@ -12,3 +12,8 @@ and sym_memory =
   | Arbitrary
   | Update of sym_memory * sym_exp * sym_exp
   | Alloc of sym_memory * sym_exp * sym_exp [@@deriving show]
+
+let count = ref 0
+let fresh_sym () : sym_id =
+  incr count;
+  "_a" ^ (string_of_int !count)

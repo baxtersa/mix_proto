@@ -27,11 +27,6 @@ let with_memory ((e, _):state) (m:sym_memory) : state =
 let memory_of ((_, m):state) : sym_memory =
   m
 
-let count = ref 0
-let fresh_sym () : sym_id =
-  incr count;
-  "_a" ^ (string_of_int !count)
-
 let rec sym_eval (ctx:sigma) (s:state) (e:exp) : state * sym_exp =
   match e with
   | Id x ->
