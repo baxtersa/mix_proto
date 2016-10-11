@@ -62,6 +62,10 @@ let rec sym_eval (ctx:sigma) (s:state) (e:exp) : state * sym_exp =
      let s2, sym_e2 = sym_eval ctx s1 e2 in
      let s' = with_memory s2 (Update (memory_of s2, sym_e1, sym_e2)) in
      s', sym_e2
+  | TypedBlock e ->
+    let gamma = generate_type_env ctx in
+    (* let t = Typecheck.typecheck gamma e in *)
+    sym_eval ctx s e
   | SymbolicBlock e ->
      sym_eval ctx s e
 

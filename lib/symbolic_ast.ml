@@ -17,3 +17,18 @@ let count = ref 0
 let fresh_sym () : sym_id =
   incr count;
   "_a" ^ (string_of_int !count)
+
+let mem_ok (m : sym_memory) : bool =
+  let rec ok (m : sym_memory) (u : sym_memory) : bool =
+    match m, u with
+    | Arbitrary, _ ->
+      true
+    | Alloc (m', Typed (SymId x, TRef t), Typed (sym_e, t')), _ ->
+      ok m u
+    | Update (m', Typed (sym_e, TRef t), Typed (sym_e', t')), u ->
+      if ok m' u
+      then true
+      else failwith "Memory does not preserve type consistency."
+    | _ ->
+      false in
+  ok m Arbitrary

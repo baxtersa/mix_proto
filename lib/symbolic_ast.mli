@@ -14,3 +14,4 @@ and sym_memory =
   | Alloc of sym_memory * sym_exp * sym_exp [@@deriving show]
 
 val fresh_sym : unit -> sym_id
+val mem_ok : sym_memory -> bool

@@ -102,4 +102,6 @@ let rec typecheck (env:gamma) (e:exp) : typ =
   | TypedBlock e ->
      typecheck env e
   | SymbolicBlock e ->
-     typecheck env e
+    let sigma = generate_sym_env env in
+    let s = Symbolic_interp.initial_state in
+    typecheck env e
