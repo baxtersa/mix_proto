@@ -1,10 +1,14 @@
 open Ast
 open Parser
 open Symbolic_ast
-open Symbolic_interp
-open Typecheck
 
 module Command = Core.Std.Command
+
+module rec T : Symbolic_interp.TYP = Typecheck.Make(SE)
+and SE : Typecheck.SYM = Symbolic_interp.Make(T)
+
+open T
+open SE
 
 let symbolic (s:string) =
   let filename : string = s in
