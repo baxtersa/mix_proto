@@ -83,6 +83,17 @@ module Make : MAKE =
         let s2, sym_e2 = sym_eval ctx s1 e2 in
         let s' = with_memory s2 (Update (memory_of s2, sym_e1, sym_e2)) in
         s', sym_e2
+      | Fun (x, t, e) ->
+        let gamma = generate_type_env ctx in
+        let t' = Typecheck.typecheck ((x, t) :: gamma) e in
+        s, Typed (SymFun (x, t, e), TFun (t, t'))
+      (* | Fix (x, t, e) -> *)
+      | App (f, arg) ->
+        let s_f, sym_f = sym_eval ctx s f in
+        let s_arg, sym_arg = sym_eval ctx s arg in
+        (match sym_f with
+         | _ ->
+           failwith "Symbolic expression in function position must be a symbolic function")
       | TypedBlock e ->
         let gamma = generate_type_env ctx in
         let t = Typecheck.typecheck gamma e in
