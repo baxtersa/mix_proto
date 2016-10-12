@@ -76,34 +76,41 @@ let rec atoms s = (
   (id |>> (fun x -> Id x))
 ) s
 
+and refs' e s = (
+  (symbol ":=" >> exp |>> fun e' -> Assign (e, e')) <|>
+  (return e)
+) s
+
 and refs s = (
   (symbol "ref" >> exp |>> fun e -> Ref e) <|>
-  (pipe2 (followed_by (symbol ":=") "" >> exp) (symbol ":=" >> exp)
-     (fun x e -> Assign (x, e))) <|>
-  (symbol "!" >> exp |>> fun x -> Deref x) <|>
-  atoms
+  (symbol "!" >> atoms |>> fun x -> Deref x) <|>
+  (atoms >>= fun e -> refs' e)
+) s
+
+and app' e s = (
+  (refs >>= fun e' -> app' (App (e, e'))) <|>
+  (return e)
 ) s
 
 and app s = (
-  (app_pattern refs (fun x y -> App (x, y))) <|>
-  (refs)
+  (refs >>= fun e -> app' e)
 ) s
 
 and cmp s = expression operators app s
 
 and exp s = (
-    (pipe3 (symbol "if" >> exp) (symbol "then" >> exp) (symbol "else" >> exp)
-       (fun e1 e2 e3 -> If (e1, e2, e3))) <|>
-    (pipe3 (symbol "let" >> id) (symbol "=" >> exp) (symbol "in" >> exp)
-       (fun x e1 e2 -> Let (x, e1, e2))) <|>
-    (pipe3 (symbol "fun" >> symbol "(" >> id) (symbol ":" >> typ) (symbol ")" >> symbol "->" >> exp)
-       (fun x t e -> Fun (x, t, e))) <|>
-    (pipe3 (symbol "fix" >> symbol "(" >> id)
-       (symbol ":" >> typ)
-       (symbol ")" >> symbol "->" >> exp)
-       (fun x t e -> Fix (x, t, e))) <|>
-    cmp
-  ) s
+  cmp <|>
+  (pipe3 (symbol "if" >> exp) (symbol "then" >> exp) (symbol "else" >> exp)
+     (fun e1 e2 e3 -> If (e1, e2, e3))) <|>
+  (pipe3 (symbol "let" >> id) (symbol "=" >> exp) (symbol "in" >> exp)
+     (fun x e1 e2 -> Let (x, e1, e2))) <|>
+  (pipe3 (symbol "fun" >> symbol "(" >> id) (symbol ":" >> typ) (symbol ")" >> symbol "->" >> exp)
+     (fun x t e -> Fun (x, t, e))) <|>
+  (pipe3 (symbol "fix" >> symbol "(" >> id)
+     (symbol ":" >> typ)
+     (symbol ")" >> symbol "->" >> exp)
+     (fun x t e -> Fix (x, t, e)))
+) s
 
 let from_string (str : string) = match parse_string exp str () with
   | Success exp -> exp
