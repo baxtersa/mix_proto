@@ -127,5 +127,10 @@ module Make : MAKE =
       | SymbolicBlock e ->
         let sigma = generate_sym_env env in
         let s = Sym.initial_state in
-        typecheck env e
+        let s', sym_e = Sym.sym_eval sigma s e in
+        match sym_e with
+        | Typed (_, t) ->
+          t
+        | _ ->
+          failwith "Symbolic execution returned to typechecker with untyped symbolic expression."
   end

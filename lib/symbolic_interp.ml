@@ -86,7 +86,9 @@ module Make : MAKE =
       | TypedBlock e ->
         let gamma = generate_type_env ctx in
         let t = Typecheck.typecheck gamma e in
-        sym_eval ctx s e
+        let alpha = fresh_sym () in
+        let s' = with_memory s (Arbitrary) in
+        s', Typed (SymId alpha, t)
       | SymbolicBlock e ->
         sym_eval ctx s e
 
