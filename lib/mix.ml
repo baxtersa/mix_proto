@@ -4,8 +4,8 @@ open Symbolic_ast
 
 module Command = Core.Std.Command
 
-module rec T : Symbolic_interp.TYP = Typecheck.Make(SE)
-and SE : Typecheck.SYM = Symbolic_interp.Make(T)
+module rec T : Analyses.TYP = Typecheck.Make(SE)
+and SE : Analyses.SYM = Symbolic_interp.Make(T)
 
 open T
 open SE
