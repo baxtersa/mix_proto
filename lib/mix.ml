@@ -14,24 +14,21 @@ let symbolic (s:string) =
   let filename : string = s in
   let program : exp = from_file filename in
   print_endline "Input:";
-  pp_exp Format.std_formatter program;
-  print_newline ();
-  let s, _ = sym_eval [] initial_state program in
+  print_endline (show_exp program);
+  let s, sym_e = sym_eval [] initial_state program in
   let g = guard_of s in
   print_endline "Output:";
-  pp_sym_exp Format.std_formatter g;
-  print_newline ()
+  print_endline ("constraints:\t" ^ show_sym_exp g);
+  print_endline ("symbolic val:\t" ^ show_sym_exp sym_e)
 
 let typed (s:string) =
   let filename : string = s in
   let program : exp = from_file filename in
   print_endline "Input:";
-  pp_exp Format.std_formatter program;
-  print_newline ();
+  print_endline (show_exp program);
   let t = typecheck [] program in
   print_endline "Output:";
-  pp_typ Format.std_formatter t;
-  print_newline ()
+  print_endline (show_typ t)
 
 let run_prog sym typ () =
   match sym, typ with
