@@ -113,6 +113,11 @@ module Make : MAKE =
       | Fun (x, t, e) ->
         let t' = typecheck ((x, t) :: env) e in
         TFun (t, t')
+      | Fix (x, t, e) ->
+        let t' = typecheck ((x, t) :: env) e in
+        if cmp_type t t'
+        then t
+        else failwith ("Fix function expression is required to have type " ^ (show_typ t) ^ ".")
       | App (e1, e2) ->
         (match typecheck env e1 with
          | TFun (t, t') ->

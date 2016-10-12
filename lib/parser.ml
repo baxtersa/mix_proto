@@ -98,6 +98,10 @@ and exp s = (
        (fun x e1 e2 -> Let (x, e1, e2))) <|>
     (pipe3 (symbol "fun" >> symbol "(" >> id) (symbol ":" >> typ) (symbol ")" >> symbol "->" >> exp)
        (fun x t e -> Fun (x, t, e))) <|>
+    (pipe3 (symbol "fix" >> symbol "(" >> id)
+       (symbol ":" >> typ)
+       (symbol ")" >> symbol "->" >> exp)
+       (fun x t e -> Fix (x, t, e))) <|>
     cmp
   ) s
 
