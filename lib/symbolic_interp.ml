@@ -93,8 +93,11 @@ module Make : MAKE =
           let s_f, sym_f = sym_eval' ctx s f in
           let s_arg, sym_arg = sym_eval' ctx s arg in
           (match sym_f with
+           | Typed (SymFun (x, t, e), _)
+           | SymFun (x, t, e) ->
+             sym_eval' ((x, sym_arg) :: ctx) s e
            | _ ->
-             failwith "Symbolic expression in function position must be a symbolic function")
+             failwith "Symbolic expression in function position must be a symbolic function.")
         | TypedBlock e ->
           let gamma = generate_type_env ctx in
           let t = Typecheck.typecheck gamma e in
