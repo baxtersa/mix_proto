@@ -7,7 +7,7 @@ sig
   val guard_of : state -> Symbolic_ast.sym_exp
   val memory_of : state -> Symbolic_ast.sym_memory
 
-  val sym_eval : Symbolic_environment.sigma -> state -> Ast.exp -> state * Symbolic_ast.sym_exp
+  val sym_eval : Symbolic_environment.sigma -> state -> Ast.exp -> (state * Symbolic_ast.sym_exp) list
 end
 
 module type TYP = sig

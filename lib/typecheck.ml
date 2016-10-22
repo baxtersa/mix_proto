@@ -16,7 +16,7 @@ sig
   val guard_of : state -> Symbolic_ast.sym_exp
   val memory_of : state -> Symbolic_ast.sym_memory
 
-  val sym_eval : Symbolic_environment.sigma -> state -> exp -> state * Symbolic_ast.sym_exp
+  val sym_eval : Symbolic_environment.sigma -> state -> exp -> (state * Symbolic_ast.sym_exp) list
 end
 
 module type MAKE =
@@ -38,6 +38,8 @@ module Make : MAKE =
         TFun (TInt, TFun (TInt, TBool))
       | Conj ->
         TFun (TBool, TFun (TBool, TBool))
+      | Disj ->
+        TFun (TBool, TFun (TBool, TBool))
 
     let type_of_uop (op:unop) : typ =
       match op with
@@ -58,8 +60,8 @@ module Make : MAKE =
 
     let z3 : solver = make_solver "z3"
 
-    let is_tautology  (guard : Symbolic_ast.sym_exp) : bool =
-      let rec build_z3_term (e : Symbolic_ast.sym_exp) : unit =
+    let is_tautology  (guard:Symbolic_ast.sym_exp) : bool =
+      let rec build_z3_term (e:Symbolic_ast.sym_exp) : unit =
         match e with
         | _ -> failwith "Not implemented"
       in
@@ -68,6 +70,19 @@ module Make : MAKE =
       | Unsat -> true
       | Sat -> false
       | Unknown -> failwith "Solver failed to determine satisfiability of exhaustive check."
+
+    let rec type_of_sym_results (results:Symbolic_ast.sym_exp list) : typ =
+      match results with
+      | [] -> failwith "No symbolic results to extract type from."
+      | [Symbolic_ast.Typed (_, t)] ->
+        t
+      | Symbolic_ast.Typed (_, t) :: rest ->
+        let t' = type_of_sym_results rest in
+        if cmp_type t t'
+        then t
+        else failwith "Forked symbolic execution disagrees on the type of the symbolic result"
+      | _ ->
+        failwith "Symbolic execution returned to typechecker with untyped symbolic expression in forked results."
 
     let rec typecheck (env:gamma) (e:exp) : typ =
       match e with
@@ -146,13 +161,18 @@ module Make : MAKE =
       | SymbolicBlock e ->
         let sigma = generate_sym_env env in
         let s = Sym.initial_state in
-        let s', sym_e = Sym.sym_eval sigma s e in
-        let guard = Sym.guard_of s' in
-        match is_tautology guard,  sym_e with
-        | true, Typed (_, t) ->
-          t
-        | false, _ ->
+        let results = Sym.sym_eval sigma s e in
+        if List.length results = 0
+        then failwith "Symbolic evaluation yielded no results.";
+        let guard = List.fold_left (fun union (s', sym_e) ->
+            Symbolic_ast.SymBinop (Disj, union, Sym.guard_of s'))
+            (Symbolic_ast.SymConst (Bool true))
+            results
+        in
+        match is_tautology guard with
+        | true ->
+          let _, types = List.split results in
+          type_of_sym_results types
+        | false ->
           failwith "Symbolic execution ws not exhaustive, and thus could yield unsound results."
-        | _ ->
-          failwith "Symbolic execution returned to typechecker with untyped symbolic expression."
   end

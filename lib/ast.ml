@@ -9,7 +9,8 @@ type typ =
 type binop =
   | Add
   | Eq
-  | Conj [@@deriving show]
+  | Conj
+  | Disj [@@deriving show]
 
 type unop =
   | Neg [@@deriving show]

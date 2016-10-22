@@ -39,7 +39,8 @@ let prefix sym op : (exp, unit) operator =
 
 let operators : (exp, unit) operator list list = [
   [infix "+" Add];
-  [infix "==" Eq; prefix "~" Neg; infix "/\\" Conj];
+  [infix "==" Eq; prefix "~" Neg;
+   infix "/\\" Conj; infix "\\/" Disj];
 ]
 
 let rec typ_atom s = (

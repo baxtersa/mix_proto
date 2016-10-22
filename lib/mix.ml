@@ -15,11 +15,14 @@ let symbolic (s:string) =
   let program : exp = from_file filename in
   print_endline "Input:";
   print_endline (show_exp program);
-  let s, sym_e = sym_eval [] initial_state program in
-  let g = guard_of s in
-  print_endline "Output:";
-  print_endline ("constraints:\t" ^ show_sym_exp g);
-  print_endline ("symbolic val:\t" ^ show_sym_exp sym_e)
+  let results = sym_eval [] initial_state program in
+  match results with
+  | [s, sym_e] ->
+    let g = guard_of s in
+    print_endline "Output:";
+    print_endline ("constraints:\t" ^ show_sym_exp g);
+    print_endline ("symbolic val:\t" ^ show_sym_exp sym_e)
+  | _ -> failwith "Forked symbolic execution not yet implemented."
 
 let typed (s:string) =
   let filename : string = s in
