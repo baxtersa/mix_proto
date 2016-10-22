@@ -1,5 +1,5 @@
 open Ast
-open Parser
+open Mix_parser
 open Symbolic_ast
 
 module Command = Core.Std.Command
