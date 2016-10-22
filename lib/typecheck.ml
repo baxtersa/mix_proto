@@ -1,5 +1,6 @@
 open Ast
 open Environment
+open Smtlib
 
 module type TYPECHECK =
 sig
@@ -54,6 +55,19 @@ module Make : MAKE =
         cmp_type t t1 && cmp_type t' t2
       | _ ->
         false
+
+    let z3 : solver = make_solver "z3"
+
+    let is_tautology  (guard : sym_exp) : bool =
+      let rec build_z3_term (e : sym_exp) : unit =
+        match e with
+        | _ -> failwith "Not implemented"
+      in
+      build_z3_term guard;
+      match check_sat z3 with
+      | Unsat -> true
+      | Sat -> false
+      | Unknown -> failwith "Solver failed to determine satisfiability of exhaustive check."
 
     let rec typecheck (env:gamma) (e:exp) : typ =
       match e with
