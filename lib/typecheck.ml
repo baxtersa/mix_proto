@@ -58,8 +58,8 @@ module Make : MAKE =
 
     let z3 : solver = make_solver "z3"
 
-    let is_tautology  (guard : sym_exp) : bool =
-      let rec build_z3_term (e : sym_exp) : unit =
+    let is_tautology  (guard : Symbolic_ast.sym_exp) : bool =
+      let rec build_z3_term (e : Symbolic_ast.sym_exp) : unit =
         match e with
         | _ -> failwith "Not implemented"
       in
@@ -147,9 +147,12 @@ module Make : MAKE =
         let sigma = generate_sym_env env in
         let s = Sym.initial_state in
         let s', sym_e = Sym.sym_eval sigma s e in
-        match sym_e with
-        | Typed (_, t) ->
+        let guard = Sym.guard_of s' in
+        match is_tautology guard,  sym_e with
+        | true, Typed (_, t) ->
           t
+        | false, _ ->
+          failwith "Symbolic execution ws not exhaustive, and thus could yield unsound results."
         | _ ->
           failwith "Symbolic execution returned to typechecker with untyped symbolic expression."
   end
