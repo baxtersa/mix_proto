@@ -11,5 +11,9 @@ sig
 end
 
 module type TYP = sig
+  (* Takes a symbolic predicate and calls out to z3 to determine
+     its satisfiability *)
+  val is_feasible : Symbolic_ast.sym_exp -> bool
+
   val typecheck : Environment.gamma -> Ast.exp -> Ast.typ
 end

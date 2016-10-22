@@ -4,6 +4,8 @@ open Smtlib
 
 module type TYPECHECK =
 sig
+  val is_feasible : Symbolic_ast.sym_exp -> bool
+
   val typecheck : gamma -> exp -> typ
 end
 
@@ -60,7 +62,7 @@ module Make : MAKE =
 
     let z3 : solver = make_solver "./z3"
 
-    let is_tautology  (guard:Symbolic_ast.sym_exp) : bool =
+    let is_feasible  (guard:Symbolic_ast.sym_exp) : bool =
       let rec build_z3_term (e:Symbolic_ast.sym_exp) : term =
         let open Symbolic_ast in
         match e with
@@ -176,7 +178,7 @@ module Make : MAKE =
             (Symbolic_ast.SymConst (Bool true))
             results
         in
-        match is_tautology guard with
+        match is_feasible guard with
         | true ->
           let _, types = List.split results in
           type_of_sym_results types

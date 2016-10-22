@@ -14,6 +14,8 @@ module type SYM = sig
 end
 
 module type TYP = sig
+  val is_feasible : sym_exp -> bool
+
   val typecheck : Environment.gamma -> Ast.exp -> Ast.typ
 end
 
