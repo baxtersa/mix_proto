@@ -58,14 +58,19 @@ module Make : MAKE =
       | _ ->
         false
 
-    let z3 : solver = make_solver "z3"
+    let z3 : solver = make_solver "./z3"
 
     let is_tautology  (guard:Symbolic_ast.sym_exp) : bool =
-      let rec build_z3_term (e:Symbolic_ast.sym_exp) : unit =
+      let rec build_z3_term (e:Symbolic_ast.sym_exp) : term =
+        let open Symbolic_ast in
         match e with
-        | _ -> failwith "Not implemented"
+        | SymBinop (Disj, e1, e2) ->
+          or_ (build_z3_term e1) (build_z3_term e2)
+        | _ -> bool_to_term true
       in
-      build_z3_term guard;
+      (* Assert that the negation of the guard is unsat (i.e. the
+         guard is a tautology. *)
+      assert_ z3 (not_ (build_z3_term guard));
       match check_sat z3 with
       | Unsat -> true
       | Sat -> false
