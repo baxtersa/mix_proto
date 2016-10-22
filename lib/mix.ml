@@ -16,13 +16,22 @@ let symbolic (s:string) =
   print_endline "Input:";
   print_endline (show_exp program);
   let results = sym_eval [] initial_state program in
-  match results with
-  | [s, sym_e] ->
-    let g = guard_of s in
-    print_endline "Output:";
-    print_endline ("constraints:\t" ^ show_sym_exp g);
-    print_endline ("symbolic val:\t" ^ show_sym_exp sym_e)
-  | _ -> failwith "Forked symbolic execution not yet implemented."
+  let rec f results =
+    match results with
+    | [s, sym_e] ->
+      let g = guard_of s in
+      if is_feasible g
+      then begin
+        print_endline "Output:";
+        print_endline ("constraints:\t" ^ show_sym_exp g);
+        print_endline ("symbolic val:\t" ^ show_sym_exp sym_e)
+      end
+      else ()
+    | (s, sym_e) :: rest ->
+      f [s, sym_e];
+      f rest
+    | _ -> failwith "Forked symbolic execution not yet implemented."
+  in f results
 
 let typed (s:string) =
   let filename : string = s in

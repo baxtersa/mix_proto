@@ -105,8 +105,8 @@ and exp s = (
      (fun e1 e2 e3 -> If (e1, e2, e3))) <|>
   (pipe3 (symbol "let" >> id) (symbol "=" >> exp) (symbol "in" >> exp)
      (fun x e1 e2 -> Let (x, e1, e2))) <|>
-  (pipe3 (symbol "fun" >> symbol "(" >> id) (symbol ":" >> typ) (symbol ")" >> symbol "->" >> exp)
-     (fun x t e -> Fun (x, t, e))) <|>
+  (pipe4 (symbol "fun" >> symbol "(" >> id) (symbol ":" >> typ) (symbol ")" >> symbol ":" >> typ_ref) (symbol "->" >> exp)
+     (fun x t1 t2 e -> Fun (x, t1, t2, e))) <|>
   (pipe3 (symbol "fix" >> symbol "(" >> id)
      (symbol ":" >> typ)
      (symbol ")" >> symbol "->" >> exp)

@@ -144,9 +144,11 @@ module Make : MAKE =
            t
          | _ ->
            failwith "Can only deref a reference.")
-      | Fun (x, t, e) ->
-        let t' = typecheck ((x, t) :: env) e in
-        TFun (t, t')
+      | Fun (x, t_dom, t_cod, e) ->
+        let t' = typecheck ((x, t_dom) :: env) e in
+        if cmp_type t_cod t'
+        then TFun (t_dom, t_cod)
+        else failwith "Function type does not match signature."
       | Fix (x, t, e) ->
         let t' = typecheck ((x, t) :: env) e in
         if cmp_type t t'
