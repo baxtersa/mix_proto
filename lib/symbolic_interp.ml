@@ -102,7 +102,7 @@ module Make : MAKE =
           results1
         |> List.concat
       | Fun (x, t_dom, t_cod, e) ->
-        [s, Typed (SymFun (x, t_dom, t_cod, e), TFun (t_dom, t_cod))]
+        [s, Typed (SymFun (x, t_dom, t_cod, ctx, e), TFun (t_dom, t_cod))]
       (* | Fix (x, t, e) -> *)
       | App (f, arg) ->
         let results_fun = sym_eval ctx s f in
@@ -110,9 +110,9 @@ module Make : MAKE =
         List.map (fun (s_f, sym_f) ->
             List.map (fun (s_arg, sym_arg) ->
                 match sym_f with
-                | Typed (SymFun (x, _, _, e), _)
-                | SymFun (x, _, _, e) ->
-                  sym_eval ((x, sym_arg) :: ctx) s e
+                | Typed (SymFun (x, _, _, ctx', e), _)
+                | SymFun (x, _, _, ctx', e) ->
+                  sym_eval ((x, sym_arg) :: ctx') s e
                 | Typed (SymId x, TFun (t, t')) ->
                   let sym_id = fresh_sym () in
                   [s, Typed (SymId sym_id, t')]
