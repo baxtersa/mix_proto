@@ -8,6 +8,7 @@ type typ =
 
 type binop =
   | Add
+  | Div
   | Eq
   | Conj
   | Disj [@@deriving show]

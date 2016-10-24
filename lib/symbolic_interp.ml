@@ -147,6 +147,19 @@ module Make : MAKE =
               results2)
           results1
         |> List.concat
+      | Div ->
+        let results1 = sym_eval ctx s e1 in
+        List.map (fun (s1, u1) ->
+            let results2 = sym_eval ctx s1 e2 in
+            List.map (fun (s2, u2) ->
+                match u1, u2 with
+                | Typed (_, TInt), Typed (_, TInt) ->
+                  s2, Typed (SymBinop (op, u1, u2), TInt)
+                | _ ->
+                  failwith ("Division expected operands of type int."))
+              results2)
+          results1
+        |> List.concat
       | Eq ->
         let results1 = sym_eval ctx s e1 in
         List.map (fun (s1, u1) ->

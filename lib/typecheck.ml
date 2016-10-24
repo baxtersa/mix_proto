@@ -36,6 +36,8 @@ module Make : MAKE =
       match op with
       | Add ->
         TFun (TInt, TFun (TInt, TInt))
+      | Div ->
+        TFun (TInt, TFun (TInt, TInt))
       | Eq ->
         TFun (TInt, TFun (TInt, TBool))
       | Conj ->
