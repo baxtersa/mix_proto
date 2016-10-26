@@ -64,12 +64,16 @@ module Make : MAKE =
         let results_guard = sym_eval ctx s e1 in
         let results_then = List.map (fun (s1, g) ->
             let s1' = with_guard s1 (SymBinop (Conj, guard_of s1, g)) in
-            sym_eval ctx s1' e2)
+            if Typecheck.is_feasible (guard_of s1')
+            then sym_eval ctx s1' e2
+            else [])
             results_guard
                            |> List.concat in
         let results_else = List.map (fun (s1, g) ->
             let s1' = with_guard s1 (SymBinop (Conj, guard_of s1, SymUnop (Neg, g))) in
-            sym_eval ctx s1' e3)
+            if Typecheck.is_feasible (guard_of s1')
+            then sym_eval ctx s1' e3
+            else [])
             results_guard
                            |> List.concat in
         results_then @ results_else
@@ -102,6 +106,7 @@ module Make : MAKE =
           results1
         |> List.concat
       | Fun (x, t_dom, t_cod, e) ->
+        (* sym_eval ((x, Typed (SymId x, t_dom)) :: ctx) s e *)
         [s, Typed (SymFun (x, t_dom, t_cod, ctx, e), TFun (t_dom, t_cod))]
       (* | Fix (x, t, e) -> *)
       | App (f, arg) ->
@@ -117,6 +122,7 @@ module Make : MAKE =
                   let sym_id = fresh_sym () in
                   [s, Typed (SymId sym_id, t')]
                 | _ ->
+                  print_endline (show_sym_exp sym_f);
                   failwith "Symbolic expression in function position must be a symbolic function.")
               results_arg
             |> List.concat)

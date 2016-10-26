@@ -64,20 +64,109 @@ module Make : MAKE =
 
     let z3 : solver = make_solver "./z3"
 
+    let sort_of_typ (t:typ) : sort =
+      match t with
+      | TInt -> int_sort
+      | TBool -> bool_sort
+      | _ ->
+        failwith "Translation of complex type to z3 sort not implemented."
+
+    let rec declare_consts seen e : unit =
+      let open Symbolic_ast in
+      match e with
+      | Typed (SymId x, TFun _) ->
+        if List.mem x !seen
+        then ()
+        else
+          begin
+            seen := x :: !seen;
+            declare_const z3 (Id x) (Sort (Id "fun"))
+          end
+      | Typed (SymId x, t) ->
+        if List.mem x !seen
+        then ()
+        else
+          begin
+            seen := x :: !seen;
+            declare_const z3 (Id x) (sort_of_typ t)
+          end
+      | Typed (e, t) ->
+        declare_consts seen e
+      | SymId _
+      | SymConst _ ->
+        ()
+      | SymFun (x, t, _, _, _) ->
+        seen := x :: !seen;
+        declare_const z3 (Id x) (sort_of_typ t)
+      | SymBinop (op, e1, e2) ->
+        declare_consts seen e1;
+        declare_consts seen e2
+      | SymUnop (Neg, e) ->
+        declare_consts seen e
+
+    let rec build_z3_term (e:Symbolic_ast.sym_exp) : term =
+      let open Symbolic_ast in
+      match e with
+      | Typed (e, t) ->
+        build_z3_term e
+      | SymId x ->
+        Const (Id x)
+      | SymConst (Int n) ->
+        int_to_term n
+      | SymConst (Bool b) ->
+        bool_to_term b
+      | SymFun (x, t, t', ctx, e) ->
+        failwith "Don't know what to do here"
+      | SymBinop (op, e1, e2) ->
+        build_z3_term_of_op op e1 e2
+      | SymUnop (Neg, e) ->
+        not_ (build_z3_term e)
+      | _ ->
+        failwith "Translation of sym_e to z3 term not implemented"
+
+    and build_z3_term_of_op op e1 e2 =
+      match op with
+      | Add ->
+        add (build_z3_term e1) (build_z3_term e2)
+      | Div ->
+        App (Id "/", [build_z3_term e1; build_z3_term e2])
+      | Eq ->
+        equals (build_z3_term e1) (build_z3_term e2)
+      | Disj ->
+        or_ (build_z3_term e1) (build_z3_term e2)
+      | Conj ->
+        and_ (build_z3_term e1) (build_z3_term e2)
+
     let is_feasible  (guard:Symbolic_ast.sym_exp) : bool =
-      let rec build_z3_term (e:Symbolic_ast.sym_exp) : term =
-        let open Symbolic_ast in
-        match e with
-        | SymBinop (Disj, e1, e2) ->
-          or_ (build_z3_term e1) (build_z3_term e2)
-        | _ -> bool_to_term true
-      in
+      push z3;
+      print_endline (Symbolic_ast.show_sym_exp guard);
+      declare_sort z3 (Id "fun") 0;
+      declare_consts (ref []) guard;
+      assert_ z3 (build_z3_term guard);
+      match check_sat z3 with
+      | Unsat ->
+        pop z3;
+        false
+      | Sat ->
+        pop z3;
+        true
+      | Unknown -> failwith "Solver failed to determine satisfiability of feasibility check."
+
+    let is_tautology  (guard:Symbolic_ast.sym_exp) : bool =
+      push z3;
+      print_endline (Symbolic_ast.show_sym_exp guard);
+      declare_sort z3 (Id "fun") 0;
+      declare_consts (ref []) guard;
       (* Assert that the negation of the guard is unsat (i.e. the
          guard is a tautology. *)
       assert_ z3 (not_ (build_z3_term guard));
       match check_sat z3 with
-      | Unsat -> true
-      | Sat -> false
+      | Unsat ->
+        pop z3;
+        true
+      | Sat ->
+        pop z3;
+        false
       | Unknown -> failwith "Solver failed to determine satisfiability of exhaustive check."
 
     let rec type_of_sym_results (results:Symbolic_ast.sym_exp list) : typ =
@@ -180,7 +269,7 @@ module Make : MAKE =
             (Symbolic_ast.SymConst (Bool true))
             results
         in
-        match is_feasible guard with
+        match is_tautology guard with
         | true ->
           let _, types = List.split results in
           type_of_sym_results types
