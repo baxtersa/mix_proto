@@ -139,7 +139,6 @@ module Make : MAKE =
 
     let is_feasible  (guard:Symbolic_ast.sym_exp) : bool =
       push z3;
-      print_endline (Symbolic_ast.show_sym_exp guard);
       declare_sort z3 (Id "fun") 0;
       declare_consts (ref []) guard;
       assert_ z3 (build_z3_term guard);
@@ -154,7 +153,6 @@ module Make : MAKE =
 
     let is_tautology  (guard:Symbolic_ast.sym_exp) : bool =
       push z3;
-      print_endline (Symbolic_ast.show_sym_exp guard);
       declare_sort z3 (Id "fun") 0;
       declare_consts (ref []) guard;
       (* Assert that the negation of the guard is unsat (i.e. the
@@ -237,16 +235,14 @@ module Make : MAKE =
            t
          | _ ->
            failwith "Can only deref a reference.")
-      | Fun (x, t_dom, t_cod, e) ->
-        let t' = typecheck ((x, t_dom) :: env) e in
-        if cmp_type t_cod t'
-        then TFun (t_dom, t_cod)
-        else failwith "Function type does not match signature."
-      | Fix (x, t, e) ->
-        let t' = typecheck ((x, t) :: env) e in
-        if cmp_type t t'
-        then t
-        else failwith ("Fix function expression is required to have type " ^ (show_typ t) ^ ".")
+      | Fun (x, t_dom, e) ->
+        let t = typecheck ((x, t_dom) :: env) e in
+        TFun (t_dom, t)
+      (* | Fix (x, t, e) -> *)
+      (*   let t' = typecheck ((x, t) :: env) e in *)
+      (*   if cmp_type t t' *)
+      (*   then t *)
+      (*   else failwith ("Fix function expression is required to have type " ^ (show_typ t) ^ ".") *)
       | App (e1, e2) ->
         (match typecheck env e1 with
          | TFun (t, t') ->
