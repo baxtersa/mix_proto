@@ -4,9 +4,9 @@ open Smtlib
 
 module type TYPECHECK =
 sig
-  val is_feasible : Symbolic_ast.sym_exp -> bool
+  val is_feasible : solver -> Symbolic_ast.sym_exp -> bool
 
-  val typecheck : gamma -> exp -> typ
+  val typecheck : solver -> gamma -> exp -> typ
 end
 
 module type SYM =
@@ -18,7 +18,8 @@ sig
   val guard_of : state -> Symbolic_ast.sym_exp
   val memory_of : state -> Symbolic_ast.sym_memory
 
-  val sym_eval : Symbolic_environment.sigma -> state -> exp -> (state * Symbolic_ast.sym_exp) list
+  val sym_eval : solver -> Symbolic_environment.sigma -> state -> exp ->
+    (state * Symbolic_ast.sym_exp) list
 end
 
 module type MAKE =
@@ -62,8 +63,6 @@ module Make : MAKE =
       | _ ->
         false
 
-    let z3 : solver = make_solver "./z3"
-
     let sort_of_typ (t:typ) : sort =
       match t with
       | TInt -> int_sort
@@ -71,7 +70,7 @@ module Make : MAKE =
       | _ ->
         failwith "Translation of complex type to z3 sort not implemented."
 
-    let rec declare_consts seen e : unit =
+    let rec declare_consts z3 seen e : unit =
       let open Symbolic_ast in
       match e with
       | Typed (SymId x, TFun _) ->
@@ -91,7 +90,7 @@ module Make : MAKE =
             declare_const z3 (Id x) (sort_of_typ t)
           end
       | Typed (e, t) ->
-        declare_consts seen e
+        declare_consts z3 seen e
       | SymId _
       | SymConst _ ->
         ()
@@ -99,10 +98,10 @@ module Make : MAKE =
         seen := x :: !seen;
         declare_const z3 (Id x) (sort_of_typ t)
       | SymBinop (op, e1, e2) ->
-        declare_consts seen e1;
-        declare_consts seen e2
+        declare_consts z3 seen e1;
+        declare_consts z3 seen e2
       | SymUnop (Neg, e) ->
-        declare_consts seen e
+        declare_consts z3 seen e
 
     let rec build_z3_term (e:Symbolic_ast.sym_exp) : term =
       let open Symbolic_ast in
@@ -137,10 +136,10 @@ module Make : MAKE =
       | Conj ->
         and_ (build_z3_term e1) (build_z3_term e2)
 
-    let is_feasible  (guard:Symbolic_ast.sym_exp) : bool =
+    let is_feasible (z3:solver) (guard:Symbolic_ast.sym_exp) : bool =
       push z3;
       declare_sort z3 (Id "fun") 0;
-      declare_consts (ref []) guard;
+      declare_consts z3 (ref []) guard;
       assert_ z3 (build_z3_term guard);
       match check_sat z3 with
       | Unsat ->
@@ -151,10 +150,10 @@ module Make : MAKE =
         true
       | Unknown -> failwith "Solver failed to determine satisfiability of feasibility check."
 
-    let is_tautology  (guard:Symbolic_ast.sym_exp) : bool =
+    let is_tautology (z3:solver) (guard:Symbolic_ast.sym_exp) : bool =
       push z3;
       declare_sort z3 (Id "fun") 0;
-      declare_consts (ref []) guard;
+      declare_consts z3 (ref []) guard;
       (* Assert that the negation of the guard is unsat (i.e. the
          guard is a tautology. *)
       assert_ z3 (not_ (build_z3_term guard));
@@ -180,7 +179,7 @@ module Make : MAKE =
       | _ ->
         failwith "Symbolic execution returned to typechecker with untyped symbolic expression in forked results."
 
-    let rec typecheck (env:gamma) (e:exp) : typ =
+    let rec typecheck (z3:solver) (env:gamma) (e:exp) : typ =
       match e with
       | Id x ->
         lookup_typ x env
@@ -189,8 +188,8 @@ module Make : MAKE =
       | Binop (op, e1, e2) ->
         (match type_of_bop op with
          | TFun (t, (TFun (t', t''))) ->
-           let t1 = typecheck env e1 in
-           let t2 = typecheck env e2 in
+           let t1 = typecheck z3 env e1 in
+           let t2 = typecheck z3 env e2 in
            if cmp_type t t1 && cmp_type t' t2
            then t''
            else failwith "Invalid type of operands."
@@ -199,65 +198,65 @@ module Make : MAKE =
       | Unop (op, e) ->
         (match type_of_uop op with
          | TFun (t, t') ->
-           let ty = typecheck env e in
+           let ty = typecheck z3 env e in
            if cmp_type t ty
            then t'
            else failwith "Invalid type of operand."
          | _ ->
            failwith "Invalid type of operator.")
       | If (e1, e2, e3) ->
-        (match typecheck env e1 with
+        (match typecheck z3 env e1 with
          | TBool ->
-           let t = typecheck env e2 in
-           let t' = typecheck env e3 in
+           let t = typecheck z3 env e2 in
+           let t' = typecheck z3 env e3 in
            if cmp_type t t'
            then t
            else failwith "Type of then/else branches must be the same."
          | _ ->
            failwith "Type of if condition must be bool.")
       | Let (x, e1, e2) ->
-        let t = typecheck env e1 in
-        typecheck ((x, t) :: env) e2
+        let t = typecheck z3 env e1 in
+        typecheck z3 ((x, t) :: env) e2
       | Ref e ->
-        TRef (typecheck env e)
+        TRef (typecheck z3 env e)
       | Assign (e1, e2) ->
-        (match typecheck env e1 with
+        (match typecheck z3 env e1 with
          | TRef t ->
-           let t' = typecheck env e2 in
+           let t' = typecheck z3 env e2 in
            if cmp_type t t'
            then TRef t
            else failwith "Can only assign an expression to a reference of the same type."
          | _ ->
            failwith "Can only assign to a reference.")
       | Deref e ->
-        (match typecheck env e with
+        (match typecheck z3 env e with
          | TRef t ->
            t
          | _ ->
            failwith "Can only deref a reference.")
       | Fun (x, t_dom, e) ->
-        let t = typecheck ((x, t_dom) :: env) e in
+        let t = typecheck z3 ((x, t_dom) :: env) e in
         TFun (t_dom, t)
       (* | Fix (x, t, e) -> *)
-      (*   let t' = typecheck ((x, t) :: env) e in *)
+      (*   let t' = typecheck z3 ((x, t) :: env) e in *)
       (*   if cmp_type t t' *)
       (*   then t *)
       (*   else failwith ("Fix function expression is required to have type " ^ (show_typ t) ^ ".") *)
       | App (e1, e2) ->
-        (match typecheck env e1 with
+        (match typecheck z3 env e1 with
          | TFun (t, t') ->
-           let targ = typecheck env e2 in
+           let targ = typecheck z3 env e2 in
            if cmp_type t targ
            then t'
            else failwith "Type of argument does not match function domain type."
          | _ ->
            failwith "Type of expression in function position must be an arrow.")
       | TypedBlock e ->
-        typecheck env e
+        typecheck z3 env e
       | SymbolicBlock e ->
         let sigma = generate_sym_env env in
         let s = Sym.initial_state in
-        let results = Sym.sym_eval sigma s e in
+        let results = Sym.sym_eval z3 sigma s e in
         if List.length results = 0
         then failwith "Symbolic evaluation yielded no results.";
         let guard = List.fold_left (fun union (s', sym_e) ->
@@ -265,7 +264,7 @@ module Make : MAKE =
             (Symbolic_ast.SymConst (Bool true))
             results
         in
-        match is_tautology guard with
+        match is_tautology z3 guard with
         | true ->
           let _, types = List.split results in
           type_of_sym_results types

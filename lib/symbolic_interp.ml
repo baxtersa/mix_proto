@@ -1,4 +1,5 @@
 open Ast
+open Smtlib
 open Symbolic_ast
 open Symbolic_environment
 
@@ -10,13 +11,13 @@ module type SYM = sig
   val guard_of : state -> sym_exp
   val memory_of : state -> sym_memory
 
-  val sym_eval : sigma -> state -> Ast.exp -> (state * sym_exp) list
+  val sym_eval : solver -> sigma -> state -> Ast.exp -> (state * sym_exp) list
 end
 
 module type TYP = sig
-  val is_feasible : sym_exp -> bool
+  val is_feasible : solver -> sym_exp -> bool
 
-  val typecheck : Environment.gamma -> Ast.exp -> Ast.typ
+  val typecheck : solver -> Environment.gamma -> Ast.exp -> Ast.typ
 end
 
 module type MAKE =
@@ -50,8 +51,8 @@ module Make : MAKE =
     let memory_of ((_, m):state) : sym_memory =
       m
 
-    let rec sym_eval (ctx:sigma) (s:state) (e:exp) : (state * sym_exp) list =
-      if not (Typecheck.is_feasible (guard_of s))
+    let rec sym_eval (z3:solver) (ctx:sigma) (s:state) (e:exp) : (state * sym_exp) list =
+      if not (Typecheck.is_feasible z3 (guard_of s))
       then []
       else
         match e with
@@ -60,34 +61,34 @@ module Make : MAKE =
         | Const c ->
           [s, Typed (SymConst c, typeof e)]
         | Binop (op, e1, e2) ->
-          sym_eval_binop ctx s op e1 e2
+          sym_eval_binop z3 ctx s op e1 e2
         | Unop (op, e) ->
-          sym_eval_unop ctx s op e
+          sym_eval_unop z3 ctx s op e
         | If (e1, e2, e3) ->
-          let results_guard = sym_eval ctx s e1 in
+          let results_guard = sym_eval z3 ctx s e1 in
           let results_then = List.map (fun (s1, g) ->
               let s1' = with_guard s1 (SymBinop (Conj, guard_of s1, g)) in
-              if Typecheck.is_feasible (guard_of s1')
-              then sym_eval ctx s1' e2
+              if Typecheck.is_feasible z3 (guard_of s1')
+              then sym_eval z3 ctx s1' e2
               else [])
               results_guard
                              |> List.concat in
           let results_else = List.map (fun (s1, g) ->
               let s1' = with_guard s1 (SymBinop (Conj, guard_of s1, SymUnop (Neg, g))) in
-              if Typecheck.is_feasible (guard_of s1')
-              then sym_eval ctx s1' e3
+              if Typecheck.is_feasible z3 (guard_of s1')
+              then sym_eval z3 ctx s1' e3
               else [])
               results_guard
                              |> List.concat in
           results_then @ results_else
         | Let (x, e1, e2) ->
-          let results = sym_eval ctx s e1 in
+          let results = sym_eval z3 ctx s e1 in
           List.map (fun (s1, sym_e1) ->
-              sym_eval ((x, sym_e1) :: ctx) s1 e2)
+              sym_eval z3 ((x, sym_e1) :: ctx) s1 e2)
             results
           |> List.concat
         | Ref e ->
-          let results = sym_eval ctx s e in
+          let results = sym_eval z3 ctx s e in
           List.map (fun (s1, sym_e) ->
               match sym_e with
               | Typed (sym_e', t) ->
@@ -99,9 +100,9 @@ module Make : MAKE =
                 failwith "Unexpected symbolic expression evaluating reference.")
             results
         | Assign (e1, e2) ->
-          let results1 = sym_eval ctx s e1 in
+          let results1 = sym_eval z3 ctx s e1 in
           List.map (fun (s1, sym_e1) ->
-              let results2 = sym_eval ctx s1 e2 in
+              let results2 = sym_eval z3 ctx s1 e2 in
               List.map (fun (s2, sym_e2) ->
                   let s' = with_memory s2 (Update (memory_of s2, sym_e1, sym_e2)) in
                   s', sym_e2)
@@ -109,7 +110,7 @@ module Make : MAKE =
             results1
           |> List.concat
         | Fun (x, t_dom, e) ->
-          let sym_es = sym_eval ((x, Typed (SymId x, t_dom)) :: ctx) s e in
+          let sym_es = sym_eval z3 ((x, Typed (SymId x, t_dom)) :: ctx) s e in
           List.map (fun (s, sym_e) ->
               match sym_e with
               | Typed (sym_e, t) ->
@@ -120,9 +121,9 @@ module Make : MAKE =
         (* [s, Typed (SymFun (x, t_dom, t_cod, ctx, e), TFun (t_dom, t_cod))] *)
         (* | Fix (x, t, e) -> *)
         | App (f, arg) ->
-          let results_fun = sym_eval ctx s f in
+          let results_fun = sym_eval z3 ctx s f in
           List.map (fun (s_f, sym_f) ->
-              let results_arg = sym_eval ctx s_f arg in
+              let results_arg = sym_eval z3 ctx s_f arg in
               List.map (fun (s_arg, sym_arg) ->
                   print_endline "Application:";
                   print_endline (show_sym_exp (guard_of s_arg));
@@ -130,7 +131,7 @@ module Make : MAKE =
                   | Typed (SymFun (x, t, _, ctx', e), _)
                   | SymFun (x, t, _, ctx', e) ->
                     let s_app = with_guard s_arg (SymBinop (Conj, guard_of s_arg, SymBinop (Eq, Typed (SymId x, t), sym_arg))) in
-                    sym_eval ((x, sym_arg) :: ctx') s_app e
+                    sym_eval z3 ((x, sym_arg) :: ctx') s_app e
                   | Typed (SymId x, TFun (t, t')) ->
                     let sym_id = fresh_sym () in
                     [s, Typed (SymId sym_id, t')]
@@ -146,25 +147,25 @@ module Make : MAKE =
           print_endline (show_sym_exp (guard_of s));
           (try
              let gamma = generate_type_env ctx in
-             let t = Typecheck.typecheck gamma e in
+             let t = Typecheck.typecheck z3 gamma e in
              let alpha = fresh_sym () in
              let s' = with_memory s (Arbitrary) in
              [s', Typed (SymId alpha, t)]
            with Failure err ->
-             (match sym_eval ctx s e with
+             (match sym_eval z3 ctx s e with
               | [] -> []
               | _ ->
                 failwith err))
         | SymbolicBlock e ->
-          sym_eval ctx s e
+          sym_eval z3 ctx s e
 
-    and sym_eval_binop (ctx:sigma) (s:state)
+    and sym_eval_binop (z3:solver) (ctx:sigma) (s:state)
         (op:binop) (e1:exp) (e2:exp) : (state * sym_exp) list =
       match op with
       | Add ->
-        let results1 = sym_eval ctx s e1 in
+        let results1 = sym_eval z3 ctx s e1 in
         List.map (fun (s1, u1) ->
-            let results2 = sym_eval ctx s1 e2 in
+            let results2 = sym_eval z3 ctx s1 e2 in
             List.map (fun (s2, u2) ->
                 match u1, u2 with
                 | Typed (_, TInt), Typed (_, TInt) ->
@@ -175,9 +176,9 @@ module Make : MAKE =
           results1
         |> List.concat
       | Div ->
-        let results1 = sym_eval ctx s e1 in
+        let results1 = sym_eval z3 ctx s e1 in
         List.map (fun (s1, u1) ->
-            let results2 = sym_eval ctx s1 e2 in
+            let results2 = sym_eval z3 ctx s1 e2 in
             List.map (fun (s2, u2) ->
                 match u1, u2 with
                 | Typed (_, TInt), Typed (_, TInt) ->
@@ -188,9 +189,9 @@ module Make : MAKE =
           results1
         |> List.concat
       | Eq ->
-        let results1 = sym_eval ctx s e1 in
+        let results1 = sym_eval z3 ctx s e1 in
         List.map (fun (s1, u1) ->
-            let results2 = sym_eval ctx s1 e2 in
+            let results2 = sym_eval z3 ctx s1 e2 in
             List.map (fun (s2, u2) ->
                 match u1, u2 with
                 | Typed (_, TInt), Typed (_, TInt) ->
@@ -201,9 +202,9 @@ module Make : MAKE =
           results1
         |> List.concat
       | Conj ->
-        let results1 = sym_eval ctx s e1 in
+        let results1 = sym_eval z3 ctx s e1 in
         List.map (fun (s1, u1) ->
-            let results2 = sym_eval ctx s1 e2 in
+            let results2 = sym_eval z3 ctx s1 e2 in
             List.map (fun (s2, u2) ->
                 match u1, u2 with
                 | Typed (_, TBool), Typed (_, TBool) ->
@@ -214,9 +215,9 @@ module Make : MAKE =
           results1
         |> List.concat
       | Disj ->
-        let results1 = sym_eval ctx s e1 in
+        let results1 = sym_eval z3 ctx s e1 in
         List.map (fun (s1, u1) ->
-            let results2 = sym_eval ctx s1 e2 in
+            let results2 = sym_eval z3 ctx s1 e2 in
             List.map (fun (s2, u2) ->
                 match u1, u2 with
                 | Typed (_, TBool), Typed (_, TBool) ->
@@ -227,10 +228,10 @@ module Make : MAKE =
           results1
         |> List.concat
 
-    and sym_eval_unop (ctx:sigma) (s:state) (op:unop) (e:exp) : (state * sym_exp) list =
+    and sym_eval_unop (z3:solver) (ctx:sigma) (s:state) (op:unop) (e:exp) : (state * sym_exp) list =
       match op with
       | Neg ->
-        let results = sym_eval ctx s e in
+        let results = sym_eval z3 ctx s e in
         List.map (fun (s', u) ->
             (match u with
              | Typed (_, TBool) ->
