@@ -1,0 +1,9 @@
+MIX(symbolic) {
+let div =
+        fun (x:int) ->
+        fun (y:int) ->
+            if y == 0
+            then false
+            else x / y
+in
+MIX(typed) { 10 + MIX(symbolic) { div 7 0 } } }

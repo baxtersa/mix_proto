@@ -1,0 +1,9 @@
+let val =
+MIX(symbolic) {
+    if true
+    then
+        MIX(typed) { 0 }
+    else
+        MIX(typed) { 10 + false }
+} in
+val
