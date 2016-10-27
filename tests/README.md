@@ -5,7 +5,7 @@ Division by 0
 ---
 
 Consider the following example in `div_by_0.mix`:
-```
+```ocaml
 MIX(symbolic) {
 let div =
   fun (x:int) ->
@@ -32,7 +32,7 @@ Unreachable Code
 ---
 
 Consider the following example in `unreachable_code.mix`:
-```
+```ocaml
 let val =
 MIX(symbolic) {
     if true
