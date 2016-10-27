@@ -49,14 +49,14 @@ let rec typ_atom s = (
   (symbol "bool" |>> fun _ -> TBool)
 ) s
 
-and typ_ref s = (
-  typ_atom >>= fun t -> (
-    (skip_symbol "ref" |>> fun _ -> TRef t) <|>
-    (return t))
-) s
+(* and typ_ref s = ( *)
+(*   typ_atom >>= fun t -> ( *)
+(*     (skip_symbol "ref" |>> fun _ -> TRef t) <|> *)
+(*     (return t)) *)
+(* ) s *)
 
 and typ s = (
-  typ_ref >>= fun t1 -> (
+  typ_atom >>= fun t1 -> (
     (symbol "->" >> typ |>> fun t2 -> TFun (t1, t2)) <|>
     (return t1))
 ) s
@@ -77,24 +77,24 @@ let rec atoms s = (
   (id |>> (fun x -> Id x))
 ) s
 
-and refs' e s = (
-  (symbol ":=" >> exp |>> fun e' -> Assign (e, e')) <|>
-  (return e)
-) s
+(* and refs' e s = ( *)
+(*   (symbol ":=" >> exp |>> fun e' -> Assign (e, e')) <|> *)
+(*   (return e) *)
+(* ) s *)
 
-and refs s = (
-  (symbol "ref" >> exp |>> fun e -> Ref e) <|>
-  (symbol "!" >> atoms |>> fun x -> Deref x) <|>
-  (atoms >>= fun e -> refs' e)
-) s
+(* and refs s = ( *)
+(*   (symbol "ref" >> exp |>> fun e -> Ref e) <|> *)
+(*   (symbol "!" >> atoms |>> fun x -> Deref x) <|> *)
+(*   (atoms >>= fun e -> refs' e) *)
+(* ) s *)
 
 and app' e s = (
-  (refs >>= fun e' -> app' (App (e, e'))) <|>
+  (atoms >>= fun e' -> app' (App (e, e'))) <|>
   (return e)
 ) s
 
 and app s = (
-  (refs >>= fun e -> app' e)
+  (atoms >>= fun e -> app' e)
 ) s
 
 and cmp s = expression operators app s

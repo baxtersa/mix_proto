@@ -27,9 +27,9 @@ type exp =
   | Unop of unop * exp
   | If of exp * exp * exp
   | Let of id * exp * exp
-  | Ref of exp
-  | Assign of exp * exp
-  | Deref of exp
+  (* | Ref of exp *)
+  (* | Assign of exp * exp *)
+  (* | Deref of exp *)
   | Fun of id * typ * exp
   (* | Fix of id * typ * exp *)
   | App of exp * exp

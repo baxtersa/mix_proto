@@ -217,23 +217,23 @@ module Make : MAKE =
       | Let (x, e1, e2) ->
         let t = typecheck z3 env e1 in
         typecheck z3 ((x, t) :: env) e2
-      | Ref e ->
-        TRef (typecheck z3 env e)
-      | Assign (e1, e2) ->
-        (match typecheck z3 env e1 with
-         | TRef t ->
-           let t' = typecheck z3 env e2 in
-           if cmp_type t t'
-           then TRef t
-           else failwith "Can only assign an expression to a reference of the same type."
-         | _ ->
-           failwith "Can only assign to a reference.")
-      | Deref e ->
-        (match typecheck z3 env e with
-         | TRef t ->
-           t
-         | _ ->
-           failwith "Can only deref a reference.")
+      (* | Ref e -> *)
+      (*   TRef (typecheck z3 env e) *)
+      (* | Assign (e1, e2) -> *)
+      (*   (match typecheck z3 env e1 with *)
+      (*    | TRef t -> *)
+      (*      let t' = typecheck z3 env e2 in *)
+      (*      if cmp_type t t' *)
+      (*      then TRef t *)
+      (*      else failwith "Can only assign an expression to a reference of the same type." *)
+      (*    | _ -> *)
+      (*      failwith "Can only assign to a reference.") *)
+      (* | Deref e -> *)
+      (*   (match typecheck z3 env e with *)
+      (*    | TRef t -> *)
+      (*      t *)
+      (*    | _ -> *)
+      (*      failwith "Can only deref a reference.") *)
       | Fun (x, t_dom, e) ->
         let t = typecheck z3 ((x, t_dom) :: env) e in
         TFun (t_dom, t)

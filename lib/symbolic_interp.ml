@@ -87,28 +87,28 @@ module Make : MAKE =
               sym_eval z3 ((x, sym_e1) :: ctx) s1 e2)
             results
           |> List.concat
-        | Ref e ->
-          let results = sym_eval z3 ctx s e in
-          List.map (fun (s1, sym_e) ->
-              match sym_e with
-              | Typed (sym_e', t) ->
-                let alpha = fresh_sym () in
-                let sym_alpha = Typed (SymId alpha, TRef t) in
-                let s' = with_memory s1 (Alloc (memory_of s1, sym_alpha, sym_e)) in
-                s', sym_alpha
-              | _ ->
-                failwith "Unexpected symbolic expression evaluating reference.")
-            results
-        | Assign (e1, e2) ->
-          let results1 = sym_eval z3 ctx s e1 in
-          List.map (fun (s1, sym_e1) ->
-              let results2 = sym_eval z3 ctx s1 e2 in
-              List.map (fun (s2, sym_e2) ->
-                  let s' = with_memory s2 (Update (memory_of s2, sym_e1, sym_e2)) in
-                  s', sym_e2)
-                results2)
-            results1
-          |> List.concat
+        (* | Ref e -> *)
+        (*   let results = sym_eval z3 ctx s e in *)
+        (*   List.map (fun (s1, sym_e) -> *)
+        (*       match sym_e with *)
+        (*       | Typed (sym_e', t) -> *)
+        (*         let alpha = fresh_sym () in *)
+        (*         let sym_alpha = Typed (SymId alpha, TRef t) in *)
+        (*         let s' = with_memory s1 (Alloc (memory_of s1, sym_alpha, sym_e)) in *)
+        (*         s', sym_alpha *)
+        (*       | _ -> *)
+        (*         failwith "Unexpected symbolic expression evaluating reference.") *)
+        (*     results *)
+        (* | Assign (e1, e2) -> *)
+        (*   let results1 = sym_eval z3 ctx s e1 in *)
+        (*   List.map (fun (s1, sym_e1) -> *)
+        (*       let results2 = sym_eval z3 ctx s1 e2 in *)
+        (*       List.map (fun (s2, sym_e2) -> *)
+        (*           let s' = with_memory s2 (Update (memory_of s2, sym_e1, sym_e2)) in *)
+        (*           s', sym_e2) *)
+        (*         results2) *)
+        (*     results1 *)
+        (*   |> List.concat *)
         | Fun (x, t_dom, e) ->
           let sym_es = sym_eval z3 ((x, Typed (SymId x, t_dom)) :: ctx) s e in
           List.map (fun (s, sym_e) ->
@@ -125,8 +125,6 @@ module Make : MAKE =
           List.map (fun (s_f, sym_f) ->
               let results_arg = sym_eval z3 ctx s_f arg in
               List.map (fun (s_arg, sym_arg) ->
-                  print_endline "Application:";
-                  print_endline (show_sym_exp (guard_of s_arg));
                   match sym_f with
                   | Typed (SymFun (x, t, _, ctx', e), _)
                   | SymFun (x, t, _, ctx', e) ->
@@ -136,15 +134,12 @@ module Make : MAKE =
                     let sym_id = fresh_sym () in
                     [s, Typed (SymId sym_id, t')]
                   | _ ->
-                    print_endline (show_sym_exp sym_f);
                     failwith "Symbolic expression in function position must be a symbolic function.")
                 results_arg
               |> List.concat)
             results_fun
           |> List.concat
         | TypedBlock e ->
-          print_endline "TypedBlock:";
-          print_endline (show_sym_exp (guard_of s));
           (try
              let gamma = generate_type_env ctx in
              let t = Typecheck.typecheck z3 gamma e in
