@@ -51,91 +51,112 @@ module Make : MAKE =
       m
 
     let rec sym_eval (ctx:sigma) (s:state) (e:exp) : (state * sym_exp) list =
-      match e with
-      | Id x ->
-        [s, lookup_exp x ctx]
-      | Const c ->
-        [s, Typed (SymConst c, typeof e)]
-      | Binop (op, e1, e2) ->
-        sym_eval_binop ctx s op e1 e2
-      | Unop (op, e) ->
-        sym_eval_unop ctx s op e
-      | If (e1, e2, e3) ->
-        let results_guard = sym_eval ctx s e1 in
-        let results_then = List.map (fun (s1, g) ->
-            let s1' = with_guard s1 (SymBinop (Conj, guard_of s1, g)) in
-            if Typecheck.is_feasible (guard_of s1')
-            then sym_eval ctx s1' e2
-            else [])
-            results_guard
-                           |> List.concat in
-        let results_else = List.map (fun (s1, g) ->
-            let s1' = with_guard s1 (SymBinop (Conj, guard_of s1, SymUnop (Neg, g))) in
-            if Typecheck.is_feasible (guard_of s1')
-            then sym_eval ctx s1' e3
-            else [])
-            results_guard
-                           |> List.concat in
-        results_then @ results_else
-      | Let (x, e1, e2) ->
-        let results = sym_eval ctx s e1 in
-        List.map (fun (s1, sym_e1) ->
-            sym_eval ((x, sym_e1) :: ctx) s1 e2)
-          results
-        |> List.concat
-      | Ref e ->
-        let results = sym_eval ctx s e in
-        List.map (fun (s1, sym_e) ->
-            match sym_e with
-            | Typed (sym_e', t) ->
-              let alpha = fresh_sym () in
-              let sym_alpha = Typed (SymId alpha, TRef t) in
-              let s' = with_memory s1 (Alloc (memory_of s1, sym_alpha, sym_e)) in
-              s', sym_alpha
-            | _ ->
-              failwith "Unexpected symbolic expression evaluating reference.")
-          results
-      | Assign (e1, e2) ->
-        let results1 = sym_eval ctx s e1 in
-        List.map (fun (s1, sym_e1) ->
-            let results2 = sym_eval ctx s1 e2 in
-            List.map (fun (s2, sym_e2) ->
-                let s' = with_memory s2 (Update (memory_of s2, sym_e1, sym_e2)) in
-                s', sym_e2)
-              results2)
-          results1
-        |> List.concat
-      | Fun (x, t_dom, t_cod, e) ->
-        (* sym_eval ((x, Typed (SymId x, t_dom)) :: ctx) s e *)
-        [s, Typed (SymFun (x, t_dom, t_cod, ctx, e), TFun (t_dom, t_cod))]
-      (* | Fix (x, t, e) -> *)
-      | App (f, arg) ->
-        let results_fun = sym_eval ctx s f in
-        let results_arg = sym_eval ctx s arg in
-        List.map (fun (s_f, sym_f) ->
-            List.map (fun (s_arg, sym_arg) ->
-                match sym_f with
-                | Typed (SymFun (x, _, _, ctx', e), _)
-                | SymFun (x, _, _, ctx', e) ->
-                  sym_eval ((x, sym_arg) :: ctx') s e
-                | Typed (SymId x, TFun (t, t')) ->
-                  let sym_id = fresh_sym () in
-                  [s, Typed (SymId sym_id, t')]
-                | _ ->
-                  print_endline (show_sym_exp sym_f);
-                  failwith "Symbolic expression in function position must be a symbolic function.")
-              results_arg
-            |> List.concat)
-          results_fun
-        |> List.concat
-      | TypedBlock e ->
-        let gamma = generate_type_env ctx in
-        let t = Typecheck.typecheck gamma e in
-        let alpha = fresh_sym () in
-        let s' = with_memory s (Arbitrary) in
-        [s', Typed (SymId alpha, t)]
-      | SymbolicBlock e ->
-        sym_eval ctx s e
+      if not (Typecheck.is_feasible (guard_of s))
+      then []
+      else
+        match e with
+        | Id x ->
+          [s, lookup_exp x ctx]
+        | Const c ->
+          [s, Typed (SymConst c, typeof e)]
+        | Binop (op, e1, e2) ->
+          sym_eval_binop ctx s op e1 e2
+        | Unop (op, e) ->
+          sym_eval_unop ctx s op e
+        | If (e1, e2, e3) ->
+          let results_guard = sym_eval ctx s e1 in
+          let results_then = List.map (fun (s1, g) ->
+              let s1' = with_guard s1 (SymBinop (Conj, guard_of s1, g)) in
+              if Typecheck.is_feasible (guard_of s1')
+              then sym_eval ctx s1' e2
+              else [])
+              results_guard
+                             |> List.concat in
+          let results_else = List.map (fun (s1, g) ->
+              let s1' = with_guard s1 (SymBinop (Conj, guard_of s1, SymUnop (Neg, g))) in
+              if Typecheck.is_feasible (guard_of s1')
+              then sym_eval ctx s1' e3
+              else [])
+              results_guard
+                             |> List.concat in
+          results_then @ results_else
+        | Let (x, e1, e2) ->
+          let results = sym_eval ctx s e1 in
+          List.map (fun (s1, sym_e1) ->
+              sym_eval ((x, sym_e1) :: ctx) s1 e2)
+            results
+          |> List.concat
+        | Ref e ->
+          let results = sym_eval ctx s e in
+          List.map (fun (s1, sym_e) ->
+              match sym_e with
+              | Typed (sym_e', t) ->
+                let alpha = fresh_sym () in
+                let sym_alpha = Typed (SymId alpha, TRef t) in
+                let s' = with_memory s1 (Alloc (memory_of s1, sym_alpha, sym_e)) in
+                s', sym_alpha
+              | _ ->
+                failwith "Unexpected symbolic expression evaluating reference.")
+            results
+        | Assign (e1, e2) ->
+          let results1 = sym_eval ctx s e1 in
+          List.map (fun (s1, sym_e1) ->
+              let results2 = sym_eval ctx s1 e2 in
+              List.map (fun (s2, sym_e2) ->
+                  let s' = with_memory s2 (Update (memory_of s2, sym_e1, sym_e2)) in
+                  s', sym_e2)
+                results2)
+            results1
+          |> List.concat
+        | Fun (x, t_dom, e) ->
+          let sym_es = sym_eval ((x, Typed (SymId x, t_dom)) :: ctx) s e in
+          List.map (fun (s, sym_e) ->
+              match sym_e with
+              | Typed (sym_e, t) ->
+                s, Typed (SymFun (x, t_dom, t, ctx, e), TFun (t_dom, t))
+              | _ ->
+                failwith "Symbolic evaluation should only yield typed symbolic expressions.")
+            sym_es
+        (* [s, Typed (SymFun (x, t_dom, t_cod, ctx, e), TFun (t_dom, t_cod))] *)
+        (* | Fix (x, t, e) -> *)
+        | App (f, arg) ->
+          let results_fun = sym_eval ctx s f in
+          List.map (fun (s_f, sym_f) ->
+              let results_arg = sym_eval ctx s_f arg in
+              List.map (fun (s_arg, sym_arg) ->
+                  print_endline "Application:";
+                  print_endline (show_sym_exp (guard_of s_arg));
+                  match sym_f with
+                  | Typed (SymFun (x, t, _, ctx', e), _)
+                  | SymFun (x, t, _, ctx', e) ->
+                    let s_app = with_guard s_arg (SymBinop (Conj, guard_of s_arg, SymBinop (Eq, Typed (SymId x, t), sym_arg))) in
+                    sym_eval ((x, sym_arg) :: ctx') s_app e
+                  | Typed (SymId x, TFun (t, t')) ->
+                    let sym_id = fresh_sym () in
+                    [s, Typed (SymId sym_id, t')]
+                  | _ ->
+                    print_endline (show_sym_exp sym_f);
+                    failwith "Symbolic expression in function position must be a symbolic function.")
+                results_arg
+              |> List.concat)
+            results_fun
+          |> List.concat
+        | TypedBlock e ->
+          print_endline "TypedBlock:";
+          print_endline (show_sym_exp (guard_of s));
+          (try
+             let gamma = generate_type_env ctx in
+             let t = Typecheck.typecheck gamma e in
+             let alpha = fresh_sym () in
+             let s' = with_memory s (Arbitrary) in
+             [s', Typed (SymId alpha, t)]
+           with Failure err ->
+             (match sym_eval ctx s e with
+              | [] -> []
+              | _ ->
+                failwith err))
+        | SymbolicBlock e ->
+          sym_eval ctx s e
 
     and sym_eval_binop (ctx:sigma) (s:state)
         (op:binop) (e1:exp) (e2:exp) : (state * sym_exp) list =
