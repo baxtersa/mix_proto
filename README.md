@@ -46,3 +46,13 @@ val ::= n | true | false
 
 op ::= + | / | == | && | ||
 ```
+
+Known Issues
+---
+There are a few quirks with my implementation, as well as issues with the formalism/examples given in the paper.
+- Symbolic execution of division doesn't perform arithmetic, so expressions like `7 / (1 / 2)` aren't recognized as division by 0.
+- I left out mutable and null-valued references from my implementation because it leads to additional complications I don't have time to implement, and they alone don't produce very useful examples.
+- Functions and Application are left out of the formalism of symbolic execution in the paper -.-
+
+  So I'm a little grumpy about this because all of their meaningful examples use both language features. I assumed I would be able to do something reasonable and come up with my own semantics without deciphering their prototype implementation for much more complex functions/application in C, and I think I did reasonably well with it, but it's certainly not perfect.
+- There's some issues with a naive implementation of their mixing rules that are a little complicated, but I can go into detail if you're interested.
