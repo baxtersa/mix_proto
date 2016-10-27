@@ -11,7 +11,7 @@ Buildtools:     ocamlbuild, camlp4
 AlphaFeatures:  ocamlbuild_more_args
 XOCamlbuildExtraArgs:   -tag thread -cflags -w,-40,-short-paths
 
-Executable mix
+Executable mix_proto
   Path:       lib
   BuildTools: ocamlbuild
   MainIs:     mix.ml

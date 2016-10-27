@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: a8125106e903fa31593aa571d66f3c1a)
+# DO NOT EDIT (digest: b08e645c7dd63540db6e1f663dbfe9a0)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -14,7 +14,7 @@ true: annot, bin_annot
 ".git": not_hygienic
 "_darcs": -traverse
 "_darcs": not_hygienic
-# Executable mix
+# Executable mix_proto
 "lib/mix.byte": package(core)
 "lib/mix.byte": package(mparser)
 "lib/mix.byte": package(mparser.re)
