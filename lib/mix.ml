@@ -67,7 +67,7 @@ let spec =
 
 let command =
   Command.basic
-    ~summary:"Launch Supernet virtual compiler and SDN controller"
+    ~summary:"Prototype OCaml implementation of the hybrid symbolic execution/type checking system MIX."
     ~readme:(fun () -> "More detailed information")
     spec
     run_prog
