@@ -31,7 +31,7 @@ One of the following two options is required:
 
 MIX Syntax
 ---
-```
+```ocaml
 expr ::= x | val
   | expr op expr
   | not expr
